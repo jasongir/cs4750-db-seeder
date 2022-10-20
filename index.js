@@ -37,13 +37,6 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 	const res = await fetch("https://api.devhub.virginia.edu/v1/courses");
 	const data = await res.json();
 
-	// figuring out how many departments exist:
-	// const depts = data.class_schedules.records
-	// 	.filter((row) => row[1] < 5000)
-	// 	.map((row) => row[0]);
-	// const deptSet = new Set(depts);
-	// console.log(deptSet.size);
-	// console.log(deptSet);
 	// 8756 courses with number < 5000, 177 departments
 
 	const filteredCourses = data.class_schedules.records.filter(
@@ -71,7 +64,7 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 		"failed to delete existing courses"
 	);
 
-	// insert all departments
+	// insert all Department, Course, and Section Data
 	for (const row of filteredCourses) {
 		const [
 			subject,
