@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import mysql from "mysql";
 import dotenv from "dotenv";
+import schoolMappings from "./schoolMapping.json";
 dotenv.config();
 
 const con = mysql.createConnection({
@@ -9,6 +10,13 @@ const con = mysql.createConnection({
 	password: process.env.PASSWORD,
 	database: "hooscheds",
 });
+
+const findSchool = (abbreviation) => {
+	for (const [key, value] of Object.entries(schoolMappings)) {
+		if (value.includes(abbreviation)) return key;
+	}
+	return "College of Arts & Sciences";
+};
 
 const executeQuery = async (query, args, successMessage, failureMessage) => {
 	try {
@@ -88,7 +96,7 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
          dept_id,
          dept_name,
          school_name) VALUES (?, ?, ?);`,
-			[subject, "", ""],
+			[subject, "", findSchool(subject)],
 			"Success: inserted into Department",
 			"Failure: did not insert into Department"
 		);

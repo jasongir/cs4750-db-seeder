@@ -1,0 +1,19 @@
+{
+	"School of Engineering and Applied Science": [
+		"BME",
+		"ChE",
+		"CS",
+		"ECE",
+		"STS",
+		"CE",
+		"SYS",
+		"MSE",
+		"MAE"
+	],
+	"School of Architecture": ["ARH", "ARCH", "SARC", "PLAN", "PLAC"],
+	"McIntire School of Commerce": [],
+	"School of Education and Human Development": [],
+	"Frank Batten School of Leadership and Public Policy": [],
+	"School of Nursing": [],
+	"School of Data Science": []
+}
