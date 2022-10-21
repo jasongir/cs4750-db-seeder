@@ -1,19 +1,30 @@
 {
 	"School of Engineering and Applied Science": [
 		"BME",
-		"ChE",
+		"CHE",
 		"CS",
 		"ECE",
 		"STS",
 		"CE",
 		"SYS",
 		"MSE",
-		"MAE"
+		"MAE",
+		"ENGR"
 	],
 	"School of Architecture": ["ARH", "ARCH", "SARC", "PLAN", "PLAC"],
-	"McIntire School of Commerce": [],
-	"School of Education and Human Development": [],
-	"Frank Batten School of Leadership and Public Policy": [],
-	"School of Nursing": [],
-	"School of Data Science": []
+	"McIntire School of Commerce": ["COMM"],
+	"School of Education and Human Development": [
+		"EDIS",
+		"EDHS",
+		"EDLF",
+		"KINE"
+	],
+	"Frank Batten School of Leadership and Public Policy": [
+		"LPPA",
+		"LPPL",
+		"LPPP",
+		"LPPS"
+	],
+	"School of Nursing": ["NUCO", "NUIP", "NURS"],
+	"School of Data Science": ["DS"]
 }

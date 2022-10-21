@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import mysql from "mysql";
 import dotenv from "dotenv";
-import schoolMappings from "./schoolMapping.json";
+import schoolMappings from "./schoolMapping.json" assert { type: "json" };
 dotenv.config();
 
 const con = mysql.createConnection({
@@ -66,6 +66,12 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 		"failed to delete existing section"
 	);
 	await executeQuery(
+		"DELETE FROM course_department;",
+		[],
+		"Deleted existing course_department",
+		"failed to delete existing course_department"
+	);
+	await executeQuery(
 		"DELETE FROM Course;",
 		[],
 		"Deleted existing courses",
@@ -94,9 +100,8 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 		executeQuery(
 			`INSERT INTO Department(
          dept_id,
-         dept_name,
-         school_name) VALUES (?, ?, ?);`,
-			[subject, "", findSchool(subject)],
+         school_name) VALUES (?, ?);`,
+			[subject, findSchool(subject)],
 			"Success: inserted into Department",
 			"Failure: did not insert into Department"
 		);
@@ -105,11 +110,19 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 			`INSERT INTO Course(
          course_id,
          course_name,
-         course_description,
-         term) VALUES (?, ?, ?, ?);`,
-			[`${subject} ${catalog_number}`, "", class_title, term_desc],
+         term) VALUES (?, ?, ?);`,
+			[`${subject} ${catalog_number}`, class_title, term_desc],
 			"Success: inserted into Course",
 			"Failure: did not insert into Course"
+		);
+		// course_department
+		executeQuery(
+			`INSERT INTO course_department(
+         course_id,
+         dept_id) VALUES ( ?, ?);`,
+			[`${subject} ${catalog_number}`, subject],
+			"Success: inserted into course_department",
+			"Failure: did not insert into course_department"
 		);
 		// section
 		executeQuery(
@@ -126,11 +139,11 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 				class_section,
 				`${subject} ${catalog_number}`,
 				instructor,
-				"",
+				"In Person",
 				meeting_time_start,
 				meeting_time_end,
 				meeting_days,
-				"",
+				"Open",
 			],
 			"Success: inserted into Section",
 			"Failure: did not insert into Section"
