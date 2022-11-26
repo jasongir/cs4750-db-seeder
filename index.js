@@ -55,22 +55,6 @@ const parseTime = (timeString) => {
 };
 
 const insertCourse = async (course) => {
-	// const [
-	// 	subject,
-	// 	catalog_number,
-	// 	class_section,
-	// 	class_number,
-	// 	class_title,
-	// 	class_topic_formal_desc,
-	// 	instructor,
-	// 	enrollment_capacity,
-	// 	meeting_days,
-	// 	meeting_time_start,
-	// 	meeting_time_end,
-	// 	term,
-	// 	term_desc,
-	// ] = row;
-
 	const {
 		subject,
 		catalog_number,
@@ -96,11 +80,6 @@ const insertCourse = async (course) => {
 						facility_description: "No facility description",
 					},
 			  ];
-
-	/* Department {
-      dept_id: subject,
-      school_name: findSchool(subject)
-   } */
 	// department
 	await executeQuery(
 		`INSERT INTO Department(
@@ -110,11 +89,6 @@ const insertCourse = async (course) => {
 		"Success: inserted into Department",
 		"Failure: did not insert into Department"
 	);
-	/* Course {
-      course_id: course_id
-      course_name: description
-      term: Fall 2022
-   } */
 	// course
 	await executeQuery(
 		`INSERT INTO Course(
@@ -125,11 +99,6 @@ const insertCourse = async (course) => {
 		"Success: inserted into Course",
 		"Failure: did not insert into Course"
 	);
-
-	/* course_department {
-      course_id: course_id
-      dept_id: subject
-   } */
 	// course_department
 	await executeQuery(
 		`INSERT INTO course_department(
@@ -139,16 +108,6 @@ const insertCourse = async (course) => {
 		"Success: inserted into course_department",
 		"Failure: did not insert into course_department"
 	);
-	/* Section {
-      section_id: course_section
-      course_id: course_id
-      professor: instructor.name
-      location: meetings[0].facility_description
-      start_time: parseTime(meetings[0].start_time)
-      end_time: parseTime(meetings[0].end_time)
-      meeting_dates: meetings[0].days
-      availability: `${enrollment_available}/${enrollment_total}`
-   } */
 	// section
 	await executeQuery(
 		`INSERT INTO Section(
@@ -179,7 +138,7 @@ const fetchDeptData = async (deptName) => {
 	const res = await fetch(
 		`http://luthers-list.herokuapp.com/api/dept/${deptName}`
 	);
-	const deptCourseData = (await res.json()).slice(0, 5);
+	const deptCourseData = await res.json(); // .slice(0, 5); // use for testing purposes
 
 	const coursePromises = [];
 	for (const course of deptCourseData) {
@@ -228,15 +187,13 @@ const fetchDeptData = async (deptName) => {
 
 	const res = await fetch("http://luthers-list.herokuapp.com/api/deptlist/");
 	const deptData = await res.json();
-	// console.log(deptData);
 
 	const deptPromises = [];
 	for (const subj of deptData) {
 		deptPromises.push(fetchDeptData(subj.subject));
 	}
+	await Promise.allSettled(deptPromises);
 
-	const deptPromiseResults = await Promise.allSettled(deptPromises);
-	console.log(deptPromiseResults);
 	con.end((err) =>
 		err ? console.error(err.stack) : console.log("terminated connection")
 	);
