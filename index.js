@@ -37,22 +37,176 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 	}
 };
 
+const parseTime = (timeString) => {
+	const splitString = timeString.split(".");
+	const [hourStr, minuteStr, ..._rest] = splitString;
+	let hour = parseInt(hourStr);
+	let timeOfDay = "AM";
+	// cases: 12 am, 1-11 am, 12 pm, 1-11 pm; default is 1-11 am
+	if (hour === 0) {
+		hour = 12;
+	} else if (hour === 12) {
+		timeOfDay = "PM";
+	} else if (hour > 12) {
+		hour -= 12;
+		timeOfDay = "PM";
+	}
+	return `${hour}:${minuteStr} ${timeOfDay}`;
+};
+
+const insertCourse = async (course) => {
+	// const [
+	// 	subject,
+	// 	catalog_number,
+	// 	class_section,
+	// 	class_number,
+	// 	class_title,
+	// 	class_topic_formal_desc,
+	// 	instructor,
+	// 	enrollment_capacity,
+	// 	meeting_days,
+	// 	meeting_time_start,
+	// 	meeting_time_end,
+	// 	term,
+	// 	term_desc,
+	// ] = row;
+
+	const {
+		subject,
+		catalog_number,
+		description,
+		course_section,
+		instructor,
+		meetings: uncleanMeetings,
+		enrollment_available,
+		enrollment_total,
+	} = course;
+
+	if (catalog_number >= 6000) return;
+
+	const course_id = `${subject} ${catalog_number}`;
+	const meetings =
+		uncleanMeetings.length > 0
+			? uncleanMeetings
+			: [
+					{
+						days: "",
+						start_time: "00.00.00.000000-05:00",
+						end_time: "00.00.00.000000-05:00",
+						facility_description: "No facility description",
+					},
+			  ];
+
+	/* Department {
+      dept_id: subject,
+      school_name: findSchool(subject)
+   } */
+	// department
+	await executeQuery(
+		`INSERT INTO Department(
+      dept_id,
+      school_name) VALUES (?, ?);`,
+		[subject, findSchool(subject)],
+		"Success: inserted into Department",
+		"Failure: did not insert into Department"
+	);
+	/* Course {
+      course_id: course_id
+      course_name: description
+      term: Fall 2022
+   } */
+	// course
+	await executeQuery(
+		`INSERT INTO Course(
+      course_id,
+      course_name,
+      term) VALUES (?, ?, ?);`,
+		[course_id, description, "Fall 2022"],
+		"Success: inserted into Course",
+		"Failure: did not insert into Course"
+	);
+
+	/* course_department {
+      course_id: course_id
+      dept_id: subject
+   } */
+	// course_department
+	await executeQuery(
+		`INSERT INTO course_department(
+      course_id,
+      dept_id) VALUES ( ?, ?);`,
+		[course_id, subject],
+		"Success: inserted into course_department",
+		"Failure: did not insert into course_department"
+	);
+	/* Section {
+      section_id: course_section
+      course_id: course_id
+      professor: instructor.name
+      location: meetings[0].facility_description
+      start_time: parseTime(meetings[0].start_time)
+      end_time: parseTime(meetings[0].end_time)
+      meeting_dates: meetings[0].days
+      availability: `${enrollment_available}/${enrollment_total}`
+   } */
+	// section
+	await executeQuery(
+		`INSERT INTO Section(
+      section_id,
+      course_id,
+      professor,
+      location,
+      start_time,
+      end_time,
+      meeting_dates,
+      availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+		[
+			course_section,
+			course_id,
+			instructor.name,
+			meetings[0].facility_description,
+			parseTime(meetings[0].start_time),
+			parseTime(meetings[0].end_time),
+			meetings[0].days,
+			`${enrollment_available}/${enrollment_total}`,
+		],
+		"Success: inserted into Section",
+		`Failure: did not insert into Section; ${meetings[0].start_time}`
+	);
+};
+
+const fetchDeptData = async (deptName) => {
+	const res = await fetch(
+		`http://luthers-list.herokuapp.com/api/dept/${deptName}`
+	);
+	const deptCourseData = (await res.json()).slice(0, 5);
+
+	const coursePromises = [];
+	for (const course of deptCourseData) {
+		coursePromises.push(insertCourse(course));
+	}
+	return await Promise.allSettled(coursePromises);
+};
+
 (async () => {
 	con.connect((err) =>
 		err ? console.error(err.stack) : console.log("Successfully connected!")
 	);
 
-	const res = await fetch("https://api.devhub.virginia.edu/v1/courses");
-	const data = await res.json();
-
-	// 8756 courses with number < 5000, 177 departments
-
-	const filteredCourses = data.class_schedules.records.filter(
-		(row) => row[1] < 5000
-	);
-	// .slice(0, 3); // just a few rows to start
-
 	// Delete all existing Department / Course / Section data:
+	await executeQuery(
+		"DELETE FROM course_department;",
+		[],
+		"Deleted existing course_department",
+		"failed to delete existing course_department"
+	);
+	await executeQuery(
+		"DELETE FROM section_schedule;",
+		[],
+		"Deleted existing section_schedule",
+		"failed to delete existing section_schedules"
+	);
+
 	await executeQuery(
 		"DELETE FROM Department;",
 		[],
@@ -66,89 +220,23 @@ const executeQuery = async (query, args, successMessage, failureMessage) => {
 		"failed to delete existing section"
 	);
 	await executeQuery(
-		"DELETE FROM course_department;",
-		[],
-		"Deleted existing course_department",
-		"failed to delete existing course_department"
-	);
-	await executeQuery(
 		"DELETE FROM Course;",
 		[],
 		"Deleted existing courses",
 		"failed to delete existing courses"
 	);
 
-	// insert all Department, Course, and Section Data
-	for (const row of filteredCourses) {
-		const [
-			subject,
-			catalog_number,
-			class_section,
-			class_number,
-			class_title,
-			class_topic_formal_desc,
-			instructor,
-			enrollment_capacity,
-			meeting_days,
-			meeting_time_start,
-			meeting_time_end,
-			term,
-			term_desc,
-		] = row;
+	const res = await fetch("http://luthers-list.herokuapp.com/api/deptlist/");
+	const deptData = await res.json();
+	// console.log(deptData);
 
-		// department
-		executeQuery(
-			`INSERT INTO Department(
-         dept_id,
-         school_name) VALUES (?, ?);`,
-			[subject, findSchool(subject)],
-			"Success: inserted into Department",
-			"Failure: did not insert into Department"
-		);
-		// course
-		executeQuery(
-			`INSERT INTO Course(
-         course_id,
-         course_name,
-         term) VALUES (?, ?, ?);`,
-			[`${subject} ${catalog_number}`, class_title, term_desc],
-			"Success: inserted into Course",
-			"Failure: did not insert into Course"
-		);
-		// course_department
-		executeQuery(
-			`INSERT INTO course_department(
-         course_id,
-         dept_id) VALUES ( ?, ?);`,
-			[`${subject} ${catalog_number}`, subject],
-			"Success: inserted into course_department",
-			"Failure: did not insert into course_department"
-		);
-		// section
-		executeQuery(
-			`INSERT INTO Section(
-         section_id,
-         course_id,
-         professor,
-         location,
-         start_time,
-         end_time,
-         meeting_dates,
-         availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-			[
-				class_section,
-				`${subject} ${catalog_number}`,
-				instructor,
-				"In Person",
-				meeting_time_start,
-				meeting_time_end,
-				meeting_days,
-				"Open",
-			],
-			"Success: inserted into Section",
-			"Failure: did not insert into Section"
-		);
+	const deptPromises = [];
+	for (const subj of deptData) {
+		deptPromises.push(fetchDeptData(subj.subject));
 	}
+
+	const deptPromiseResults = await Promise.allSettled(deptPromises);
+	console.log(deptPromiseResults);
 	con.end((err) =>
 		err ? console.error(err.stack) : console.log("terminated connection")
 	);
